@@ -38,9 +38,9 @@ int main(int argc, char* argv[])
 	int displayrows=20/*number of rows displayed in text box(scroll added too)*/,returnhandler=1/*select behaviour for enter key press*/;
         char *message=malloc(maxchars*sizeof(char));  //allocate memory for our message string
         bool ins=false/*insert mode is initially false means text will be replaced in beginning*/,allowcr=true;
-	if(argc<3)/*in case program is not given the necessary arguments*/
+	if(argc<3)/*in case program is not given the necessary adddrguments*/
 	{
-		printf("usage: %s filename mode | modes can be \nopen new file with [w] open existing file with [r]\n\n",argv[0]);/* generate an error */
+d		printf("usage: %s filename mode | modes can be \nopen new file with [w] open existing file with [r]\n\n",argv[0]);/* generate an error */
 		return 0;/*and exit*/
 	}
 	if(strcmp(argv[2],"w")==0)/*if user asked toopen a new file*/
