@@ -11,48 +11,39 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-struct tosend{
-	short srcport;
-	short dstport;
-	short length;
-	short csum;
-	char data[56];
-};
-
 int main(){
 	struct sockaddr_in serv_addr, sender;
-	struct tosend tsend;
-
+	struct udphdr *udph;
 	int sockfd, slen = sizeof(sender);
 	short portnum = 8888, srcnum = 6666;
-	char data[56], getbuf[84];
-
+	char buf[64], getbuf[84];
+	char str[] = "Oh, hello there, prick";
+	
 	sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
 	serv_addr.sin_family = AF_INET;
 	serv_addr.sin_port = htons(portnum);
 	inet_aton("127.0.0.1", &serv_addr.sin_addr);
 	
-	memset(data, '0', sizeof(data));
+	memset(buf, '0', sizeof(buf));
 	memset(getbuf, '0', sizeof(getbuf));
-
 	
-	tsend.srcport = htons(srcnum);
-	tsend.dstport = htons(portnum);
-	tsend.csum = 0;
-	tsend.length = htons(64);
-	strncpy(tsend.data, "Oh, hello there prick\0", sizeof(tsend.data));
-
+	strncpy(buf+sizeof(struct udphdr), str, sizeof(str));
 	
-		
+	udph = (struct udphdr* )(buf);
+	udph->source = htons(srcnum);
+	udph->dest = htons(portnum);
+	udph->len = htons(sizeof(struct udphdr)+sizeof(str));
+	udph->check = 0;
+	
 		
 	while (1){
-		if (sendto(sockfd, &tsend, sizeof(tsend), 0, (struct sockaddr *)&serv_addr, slen) < 0){
+		if (sendto(sockfd, buf, sizeof(buf), 0, (struct sockaddr *)&serv_addr, slen) < 0){
 		perror("Sendto");
 		exit(1);
 		}
 	
 		recvfrom(sockfd, getbuf, sizeof(getbuf), 0, (struct sockaddr *)&sender, &slen);
-		struct udphdr *udph = (struct udphdr* )(getbuf+20);
+		udph = (struct udphdr* )(getbuf+20);
 		char *data = getbuf+28;		
 		if (udph->dest == htons(srcnum)){
 			printf("msg from: %s\t", inet_ntoa(sender.sin_addr));

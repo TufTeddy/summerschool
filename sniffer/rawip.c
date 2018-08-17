@@ -8,81 +8,73 @@
 #include <sys/types.h>
 
 #include <netinet/udp.h>
+#include <netinet/ip.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-
-struct tosend{
-	unsigned char iphlen:4;
-	unsigned char ipvers:4;
-	unsigned char iptos;
-	unsigned short iplength;
-	unsigned short ipid;
-	unsigned short ipflfr;
-	unsigned char ipttl;
-	unsigned char iptypeproto;
-	unsigned short ipheadercsum;
-	unsigned int ipsrc;
-	unsigned int ipdst;
-	unsigned short srcport;
-	unsigned short dstport;
-	unsigned short length;
-	unsigned short csum;
-	char data[56];
-};
-
 
 unsigned short get_chksum(unsigned short *ptr, int nbytes);
 
 int main(){
 	struct sockaddr_in serv_addr, sender;
-	struct tosend tsend;
+	struct udphdr *udph;
+	struct iphdr *iph;
 
-	int sockfd, slen = sizeof(sender), val = 1;
-	short portnum = 8888, srcnum = 6666;
-	char data[56], getbuf[84];
+	int sockfd, slen = sizeof(sender);
+	short portnum = 8888, srcnum = 5555;
+	char buf[84], getbuf[100];
+	char str[] = "Oh, hello there, maaan";
 
 	sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
-	setsockopt(sockfd, IPPROTO_IP, IP_HDRINCL,(const char *) &val, sizeof(val));
+	
+	
+	/*int val = 1;
+	if (setsockopt(sockfd, IPPROTO_IP, IP_HDRINCL, &val, sizeof(val)) < 0){
+		perror("setsockopt");
+		exit(1);
+	}*/
 	serv_addr.sin_family = AF_INET;
 	serv_addr.sin_port = htons(portnum);
 	inet_aton("127.0.0.1", &serv_addr.sin_addr);
 	
-	memset(data, '0', sizeof(data));
+	memset(buf, '0', sizeof(buf));
 	memset(getbuf, '0', sizeof(getbuf));
+	
+	iph = (struct iphdr*)(buf);
+	iph->ihl = 5;
+	iph->version = 4;
+	iph->tos = 0;
+	iph->tot_len = sizeof(struct iphdr) + sizeof(struct udphdr) + sizeof(str);
+	iph->id = rand()%100;
+	iph->frag_off = 0;
+	iph->ttl = 64;
+	iph->protocol = 17;
+	iph->check = 0;
+	iph->saddr = inet_addr("127.0.0.1");
+	iph->daddr = inet_addr("127.0.0.1");
 
-	tsend.ipvers = 4;
-	tsend.iphlen = 5;
-	tsend.iptos = 0;
-	tsend.iplength = 84;
-	tsend.ipid = 100;
-	tsend.ipflfr = 0;
-	tsend.ipttl = 64;
-	tsend.iptypeproto = 17;
-	//tsend.ipheadercsum = 0;
-	tsend.ipsrc = inet_addr("127.0.0.1");
-	tsend.ipdst = inet_addr("127.0.0.1");
-	tsend.srcport = htons(srcnum);
-	tsend.dstport = htons(portnum);
-	tsend.length = htons(64);
-	strncpy(tsend.data, "Oh, hello there prick\0", sizeof(tsend.data));
+	udph = (struct udphdr* )(buf+sizeof(struct iphdr));
+	udph->source = htons(srcnum);
+	udph->dest = htons(portnum);
+	udph->len = htons(sizeof(struct udphdr)+sizeof(str));
+	udph->check = 0;
 
-	tsend.ipheadercsum = get_chksum((unsigned short*) &tsend, sizeof(tsend));
+	strncpy(buf+sizeof(struct iphdr)+sizeof(struct udphdr), str, sizeof(str));
 		
 	while (1){
-		if (sendto(sockfd, &tsend, sizeof(tsend), 0, (struct sockaddr *)&serv_addr, slen) < 0){
+		if (sendto(sockfd, buf, sizeof(buf), 0, (struct sockaddr *)&serv_addr, slen) < 0){
 			perror("Sendto");
 			exit(1);
 		}
 	
-		if (recvfrom(sockfd, getbuf, sizeof(getbuf), 0, (struct sockaddr *)&sender, &slen) < 0){
-			perror("recvfrom");
-			exit(1);
-		}
-		struct udphdr *udph = (struct udphdr* )(getbuf+20);
-		char *data = getbuf+28;		
+		recv(sockfd, getbuf, sizeof(getbuf), 0);
+		printf("got it, got it, got it");
+		udph = (struct udphdr* )(getbuf+sizeof(struct iphdr));
+		char *data = getbuf+sizeof(struct iphdr)+sizeof(struct udphdr);		
 		if (udph->dest == htons(srcnum)){
 			printf("msg from: %s\t", inet_ntoa(sender.sin_addr));
 			printf("msg: %s\n", data);
+			fflush(stdout);
+			sync();
 		}
 		//sleep(2);
 	}

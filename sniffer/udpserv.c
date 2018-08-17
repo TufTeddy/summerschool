@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <unistd.h>
 
 int main(){
 	struct sockaddr_in serv_addr, cli_addr;
@@ -15,7 +16,9 @@ int main(){
 	fflush(stdout);
 	while(1){
 		if( recvfrom(sockfd, buf, sizeof(buf), 0, (struct sockaddr *)&cli_addr, &slen)>0){
-			printf("Got msg: %s", buf);
+			printf("Got msg: %s\n", buf);
+			fflush(stdout);
+			sync();
 			for (i = 0; i < 10; i += 2){
 				buf[i] = 'x';
 				buf[i+1] = 'D';
