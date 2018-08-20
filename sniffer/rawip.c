@@ -26,12 +26,12 @@ int main(){
 
 	sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
 	
-	
-	/*int val = 1;
+	int val = 1;
 	if (setsockopt(sockfd, IPPROTO_IP, IP_HDRINCL, &val, sizeof(val)) < 0){
 		perror("setsockopt");
 		exit(1);
-	}*/
+	}
+	
 	serv_addr.sin_family = AF_INET;
 	serv_addr.sin_port = htons(portnum);
 	inet_aton("127.0.0.1", &serv_addr.sin_addr);
@@ -60,23 +60,26 @@ int main(){
 
 	strncpy(buf+sizeof(struct iphdr)+sizeof(struct udphdr), str, sizeof(str));
 		
+
+	if (sendto(sockfd, buf, sizeof(buf), 0, (struct sockaddr *)&serv_addr, slen) < 0){
+		perror("Sendto");
+		exit(1);
+	}
+
 	while (1){
-		if (sendto(sockfd, buf, sizeof(buf), 0, (struct sockaddr *)&serv_addr, slen) < 0){
-			perror("Sendto");
-			exit(1);
-		}
-	
 		recv(sockfd, getbuf, sizeof(getbuf), 0);
-		printf("got it, got it, got it");
+		puts("got packet");
+		fflush(stdout);
+		sync();
+		iph = (struct iphdr* )(getbuf+0);
 		udph = (struct udphdr* )(getbuf+sizeof(struct iphdr));
 		char *data = getbuf+sizeof(struct iphdr)+sizeof(struct udphdr);		
-		if (udph->dest == htons(srcnum)){
-			printf("msg from: %s\t", inet_ntoa(sender.sin_addr));
+		if (htons(udph->source) == portnum){
+			printf("msg from: %s:%d\t", inet_ntoa(*(struct in_addr* )&iph->saddr), htons(udph->source));
 			printf("msg: %s\n", data);
 			fflush(stdout);
 			sync();
 		}
-		//sleep(2);
 	}
 		
 	return 0;
