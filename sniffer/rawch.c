@@ -17,12 +17,12 @@
 #include <arpa/inet.h>
 #include <linux/if_packet.h>
 
-#define DEST_MAC0	0x10
-#define DEST_MAC1	0x78
-#define DEST_MAC2	0xD2
-#define DEST_MAC3	0xDB
-#define DEST_MAC4	0x09
-#define DEST_MAC5	0x4E
+#define DEST_MAC0	0x08
+#define DEST_MAC1	0x00
+#define DEST_MAC2	0x27
+#define DEST_MAC3	0x8c
+#define DEST_MAC4	0xe4
+#define DEST_MAC5	0x5f
 
 unsigned short csum(unsigned short *buf, int nwords)
 {
@@ -107,8 +107,8 @@ int main(){
 	iph->ttl = 64;
 	iph->protocol = 17;
 	iph->check = 0;
-	iph->saddr = inet_addr("10.0.2.15");
-	iph->daddr = inet_addr("192.168.1.66");
+	iph->saddr = inet_addr("10.8.240.2");
+	iph->daddr = inet_addr("10.8.240.3");
 	
 	eth = (struct ether_header* )buf;
 	eth->ether_shost[0] = ((uint8_t *)&if_mac.ifr_hwaddr.sa_data)[0];
@@ -139,9 +139,9 @@ int main(){
 	}
 	while(1){
 		recv(sockfd, getbuf, sizeof(getbuf), 0);
-		iph = (struct iphdr* )(getbuf+0);
-		udph = (struct udphdr* )(getbuf+20);
-		char *data = getbuf+28;		
+		iph = (struct iphdr* )(getbuf+sizeof(struct ether_header));
+		udph = (struct udphdr* )(getbuf+sizeof(struct ether_header)+sizeof(struct iphdr));
+		char *data = getbuf+sizeof(ether_header)+sizeof(struct iphdr)+sizeof(struct udphdr);
 		if (htons(udph->source) == portnum){
 			printf("msg from: %s:%d\t", inet_ntoa(*(struct in_addr* )&iph->saddr), htons(udph->source));
 			printf("msg: %s\n", data);
